@@ -1,0 +1,89 @@
+
+library(biovizBase)
+library(Signac)
+library(Seurat)
+library(future)
+library(ggplot2)
+library(GenomeInfoDb)
+library(EnsDb.Hsapiens.v75)
+#library(EnsDb.Mmusculus.v75)
+#library(BSgenome.Mmusculus.UCSC.mm10)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(patchwork)
+options(future.globals.maxSize = Inf)
+annot <- GetGRangesFromEnsDb(EnsDb.Hsapiens.v75)
+#annot <- GetGRangesFromEnsDb(EnsDb.Mmusculus.v75)
+seqlevelsStyle(annot) <- "UCSC"
+#genome.use <- seqlengths(BSgenome.Mmusculus.UCSC.mm10)[1:23]
+genome.use <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)[1:23]
+
+fpath <- "/data/abdelwao-lab/bin/R_LOOP/Mouse_kit_Positive/singleCell/cb2Fastq/"
+setwd("/data/abdelwao-lab/bin/R_LOOP/Mouse_kit_Positive/singleCell/cb2Fastq/")
+fragfiles <- list.files(
+  path = fpath,
+  pattern = "cordBlood2New.fragments.sort.bed.gz$",
+  full.names = TRUE
+)
+fragfiles
+fname <- gsub(pattern = paste0(fpath, "/"),
+              replacement = "",
+              x = fragfiles)
+fname <- gsub(pattern = ".bed.gz",
+              replacement = "",
+              x = fname)
+names(fragfiles) <- fname
+fname
+total_counts <- CountFragments(fragments = as.list(fragfiles))
+cells.keep <- total_counts[total_counts$frequency_count > 150, "CB"]
+create_assay <- function(frag, cells, genome.use) {
+  frag_obj <- CreateFragmentObject(
+    path = frag,
+    cells = cells
+  )
+  counts <- AggregateTiles(
+    object = frag_obj,
+    cells = cells,
+    min_counts = 1,
+    binsize = 10000,
+    genome = genome.use
+  )
+  return(counts)
+}
+all.counts <- lapply(
+  X = fragfiles,
+  FUN = create_assay,
+  cells = cells.keep,
+  genome.use = genome.use
+)
+
+names(all.counts) <- fname
+all.cells <- lapply(all.counts, colnames)
+common.cells <- Reduce(intersect, all.cells)
+all.counts <- lapply(all.counts, function(x) x[, common.cells])
+combined.matrix <- do.call(what = rbind, args = all.counts)
+obj <- CreateSeuratObject(
+  counts = combined.matrix,
+  min.cells = 10,
+  assay = "all"
+)
+obj <- obj[, obj$nCount_all < 10000 & obj$nCount_all > 100]
+
+for (i in seq_along(all.counts)) {
+  mat <- all.counts[[i]][, colnames(obj)]
+  assay <- CreateChromatinAssay(
+    counts = mat,
+    min.features = 10,
+    fragments = fragfiles[[i]],
+    annotation = annot
+  )
+  obj[[names(all.counts)[i]]] <- assay
+}
+obj
+str(obj)
+obj <- RunTFIDF(obj)
+obj <- FindTopFeatures(obj, min.cutoff = 50)
+obj <- RunSVD(obj)
+obj <- RunUMAP(obj, reduction = 'lsi',dims =2:10)
+obj <- FindNeighbors(object = obj, reduction = 'lsi', dims =2:10)
+obj <- FindClusters(object = obj, verbose = FALSE, algorithm = 3)
+DimPlot(object = obj, label = TRUE) + NoLegend()

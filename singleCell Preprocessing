@@ -1,0 +1,25 @@
+#!/bin/bash
+#BSUB -J myjobMPI
+#BSUB -n 12
+#BSUB -R span[ptile=12]
+#BSUB -R rusage[mem=4]
+#BSUB -W 90:00
+#BSUB -o %J.stdout
+#BSUB -eo %J.stderr
+mm10Fasta=/data/abdelwao-lab/bin/RNA_seq/Index_RNA_Seq/fastamm10/GRCm38.p4.genome.fa
+hg38Fasta=/data/abdelwao-lab/bin/RNA_seq/Index_RNA_Seq/fastahg38/GRCh38.p13.genome.fa
+for i in *_L001*R1*fastq.gz
+do
+#       i2=${i/L001/L001}
+#       catName=${i/L001/ME}
+#       cat $i $i2 > $catName
+        sinto barcode -b 12 --barcode_fastq ${i%%_L001*}*R2*fastq.gz  --read1 ${i%%_L001*}*R1*gz --read2 ${i%%_L001*}*R3*gz 
+        bwa-mem2 mem -t 40 $hg38Fasta ${i%%_L001*}*R1*barcoded*fastq.gz ${i%%_L001*}*R3*barcoded*fastq.gz | samtools view -b - > ${i%%_L001*}.bam
+        samtools sort -@ 8 ${i%%_L001*}.bam -o ${i%%_L001*}.sort.bam
+        samtools index  ${i%%_L001*}.sort.bam
+        sinto fragments -b ${i%%_L001*}.sort.bam -p 20 -f ${i%%_L001*}.fragments.bed --barcode_regex "[^:]*"
+        sort -k1,1 -k2,2n  ${i%%_L001*}.fragments.bed >  ${i%%_L001*}.fragments.sort.bed
+        bgzip -@ 8 ${i%%_L001*}.fragments.sort.bed
+        tabix -p bed ${i%%_L001*}.fragments.sort.bed.gz
+        rm ${i%%_L001*}.fragments.bed
+done

@@ -1,0 +1,13 @@
+#!/bin/bash
+# Calculate mtDNA percentage in bam file
+## Calculate %mtDNA:
+#### Calculate percentage of reads mapped to mitochondrial genome (mtDNA) using SAMtools idxstats
+#### Can be useful for ATAC-seq data. Requires an indexed BAM file:
+
+mtReads=$(samtools idxstats $1 | grep 'chrM' | cut -f 3)
+totalReads=$(samtools idxstats $1 | awk '{SUM += $3} END {print SUM}')
+
+echo '==> mtDNA Content:' $(bc <<< "scale=2;100*$mtReads/$totalReads")'%'
+echo '==> totalReads:' ${totalReads}
+echo '==>R_LoopReads:' $(bc <<< "$totalReads-$mtReads")
+echo '==>mtDNAReads:' $mtReads

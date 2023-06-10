@@ -1,0 +1,11 @@
+#!/bin/bash
+#BSUB -J myjobMPI
+#BSUB -n 12
+#BSUB -R span[ptile=12]
+#BSUB -R rusage[mem=22]
+#BSUB -W 90:00
+#BSUB -o %J.stdout
+#BSUB -eo %J.stderr
+mkdir ./GroupBarcode
+#sinto filterbarcodes --bam ./4506_BL-2102_CB_2_IGO_12437_CA_6_S6_ME_R1_001.sort.bam --cells singleCellBarcodeGroup.txt -p 12  --barcode_regex "[^:]*" 
+sinto filterbarcodes --bam ./4503_BL-2102_CKIT_1_IGO_12437_CA_3_S3_.sort.bam --cells mouseSingleCellBarcodeRaw.txt  -p 12  --barcode_regex "[^:]*" 

@@ -1,0 +1,54 @@
+setwd("/data/abdelwao-lab/bin/R_LOOP/Mouse_kit_Positive/singleCell/cb2Fastq/singleCellSeparate/")
+library(GenomicRanges)
+library(JASPAR2016)
+library(chromVAR)
+library(motifmatchr)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(BSgenome.Hsapiens.UCSC.hg19)
+library(Matrix)
+library(SummarizedExperiment)
+library(BiocParallel)
+library(Signac)
+library(biovizBase)
+library(Signac)
+library(Seurat)
+library(future)
+library(ggplot2)
+library(GenomeInfoDb)
+library(EnsDb.Hsapiens.v75)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(patchwork)
+options(future.globals.maxSize = Inf)
+bamFiles <- paste0(seq(0,12),".bam")
+#bamFiles <- list.files(pattern = "^[1:12]*.bam$")
+bamFile
+cellType <- gsub(pattern = ".bam",replacement = "",bamFiles)
+cellType
+peakFile <- "../MACS2_qe-4/4506_BL-2102_CB_2_IGO_12437_CA_6_S6_ME_R1_001.sort_peaks.narrowPeak"
+peaks <- readNarrowpeaks(peakFile)
+head(peaks)
+fragmentCounts <- getCounts(bamFiles,
+                            peaks,
+                            paired=TRUE,
+                            by_rg = FALSE,
+                            format="bam")
+countFile <- addGCBias(fragmentCounts, 
+                       genome = BSgenome.Hsapiens.UCSC.hg38)
+counts_filtered <- filterSamples(countFile, shiny = FALSE)
+str(counts_filtered)
+counts_filtered <- filterPeaks(counts_filtered)
+motifs <- getJasparMotifs(species="Homo sapiens")
+motif_ix <- matchMotifs(motifs, counts_filtered, 
+                        genome = BSgenome.Hsapiens.UCSC.hg38)
+dev <- computeDeviations(object = counts_filtered, annotations = motif_ix)
+variability <- computeVariability(dev)
+head(variability)
+write.table(variability,"variabilitySingleCell.txt")
+plotVariability(variability, use_plotly = FALSE,n=8) 
+head(variability[order(-variability$variability),],40)
+deviations(dev)
+deviation <- deviationScores(dev)
+write.table(deviation,"deviationZscore.txt")
+plotVariability
+head(deviation)
+dim(deviation)

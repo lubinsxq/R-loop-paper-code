@@ -1,0 +1,1 @@
+computeMatrix reference-point --referencePoint center -b 5000 -a 5000 -S CB_Union.bam.bw  CD34AdultUnion.bam.bw  K562_40K_Union.bam.bw  MOLM13_Union.bam.bw -R ./MACS2_pe-4/K562_Molm13_Intersect_SubNormal_summits.bed  -p 16 -o CBCd34K562Molm13RegionImmortaSpecific.npz --outFileNameMatrix  CBCd34K562Molm13RegionImmortaSpecific.npz.tab

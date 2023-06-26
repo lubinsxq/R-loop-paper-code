@@ -1,0 +1,41 @@
+setwd("/data/abdelwao-lab/bin/R_LOOP/Mouse_kit_Positive/nt11152022SerialCkit/MACS2_Narrow_qe4")
+library(tidyverse)
+library(readr)
+list.files(pattern = "Only.tab")
+bin <- read_table("ckit_8K_1_slideWindow50bpOvelap1GCcontentOnly.tab")
+head(bin)
+colnames(bin) <- c("chr", "start", "gc_pct", "num_C", "num_G")
+tail(bin)
+dim(bin)
+bin$GC_Skew <- (bin$num_G-bin$num_C)/(bin$num_G+bin$num_C)
+head(bin)
+dim(bin)
+head(bin)
+#binSort <- bin %>% arrange(chr)
+#binSort2 <- binSort[!grepl("chrX|chrY|chrM", binSort$chr),]
+library(dplyr)
+binDiff <- bin %>% 
+  mutate(diff = start - lag(start,default = start[1]))
+#summary(binDiff$diff)
+binDiff$diff[binDiff$diff>1] <- 0
+binDiff$diff[binDiff$diff<0] <- 0
+library(data.table)
+setDT(binDiff)[, idx := cumsum(diff), by = rleid(diff == 0L)]
+head(binDiff)
+tail(binDiff)
+binDiff2 <- binDiff[binDiff$idx <= 2001, ]
+binDiff2[is.na(binDiff2)] <- 0
+head(binDiff2)
+res <- binDiff2 %>% 
+  group_by(idx) %>% 
+  summarise(GC_content = mean(gc_pct),
+            GC_skew = mean(GC_Skew))
+head(res)
+tail(res)
+p <- res %>% 
+  gather(Group, value, -idx) %>%
+  ggplot(aes(x=idx, y = value, color = Group)) + 
+  facet_wrap(~ Group, scales = "free_y") + 
+  geom_point()
+p
+write.csv(res,"GC_skewResults.csv")

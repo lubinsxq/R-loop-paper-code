@@ -1,0 +1,14 @@
+#!/bin/bash
+#To merge samples with or without RNaseH treatment sample
+#BSUB -J myjobMPI
+#BSUB -n 12
+#BSUB -R span[ptile=12]
+#BSUB -R rusage[mem=12]
+#BSUB -W 20:00
+#BSUB -o %J.stdout
+#BSUB -eo %J.stderr
+
+cat  ckit_8K_2_IGO_13872_42_S42_L001_summits.bed | awk -v FS="\t" -v OFS="\t" '$2> 1000 {print $1,$2,$3}' | awk -v OFS="\t" '{ if ($2>$3){$4=$2-1000;$5=$2+1000;print $1,$4,$5} else {$4=$3-1000;$5=$3+1000;print$1,$4,$5}}' > ckit_8K_1_summit_2kUpDown.bed
+bedtools makewindows -b  ckit_8K_1_summit_2kUpDown.bed -w 50 -s 1 > ckit_8K_1_slideWindow50bpOvelap1.bed
+bedtools nuc -fi /data/abdelwao-lab/bin/RNA_seq/Index_RNA_Seq/fastamm10/GRCm38.p4.genome.fa -bed ckit_8K_1_slideWindow50bpOvelap1.bed > ckit_8K_1_slideWindow50bpOvelap1GCcontent.tab
+cat  ckit_8K_1_slideWindow50bpOvelap1GCcontent.tab | awk -v OFS="\t" '{print $1,$2,$5,$7,$8}' > ckit_8K_1_slideWindow50bpOvelap1GCcontentOnly.tab
